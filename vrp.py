@@ -7,6 +7,8 @@
 import os
 import csv
 import sys
+import networkx as nx
+import matplotlib.pyplot as plt
 cost_matrix = [
 		[0,12,11,7,10,10,9,8,6,12],
 		[12,0,8,5,9,12,14,16,17,22],
@@ -20,6 +22,7 @@ cost_matrix = [
 		[12,22,22,17,18,15,16,11,10,0]
 		]
 
+G = nx.Graph()
 
 row_elements = 10
 #for row in range(row_elements):
@@ -177,5 +180,27 @@ for saving in savings_list:
 			print (result_dict)
 
 print ("********************* Final Results *********************")
+for each_tuple in result_list:
+	temp_list = list(each_tuple)
+	temp_list.insert(0,0)
+	temp_list.insert(len(temp_list),0)
+	cycle_tuple = tuple(temp_list)
+	result_list[result_list.index(each_tuple)] = cycle_tuple
+
+for key,value in result_dict.items():
+	if value == 0:
+		result_list.append(tuple([0,key,0]))
+
+for item in result_list:
+	edge_list = list(item)
+	G.add_nodes_from(edge_list)
+	for i in range(len(edge_list)-1):
+		edge_to_add_in_graph = (edge_list[i],edge_list[i+1])
+		G.add_edge(*edge_to_add_in_graph)
+print (G.nodes())
+nx.draw_networkx(G,arrows=True,node_color = 'g', alpha = 0.8)
+plt.savefig("simple_path.png") # save as png
+plt.show() # display
+
 print (result_list)
 print (result_dict)
