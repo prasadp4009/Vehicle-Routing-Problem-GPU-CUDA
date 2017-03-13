@@ -1,0 +1,1 @@
+cost_matrix_size rows 10,columns 10
