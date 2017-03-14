@@ -20,6 +20,13 @@
 #include <device_functions.h>
 #include <helper_cuda.h>
 
+// GPU Capacity
+
+// Max Threads per block
+#define MaxThreadsPerBlock 1024
+#define MaxThreadx 32
+#define MaxThready 32
+
 /****************************************************************************/
 struct nodeInfo {
 	int node;
@@ -60,17 +67,26 @@ struct keyVal
 __global__ void
 savingsCalc(int* costMatrix, int* savingsMatrix, int rows, int columns)
 {
-	int i = threadIdx.x;
-	int j = threadIdx.y;
-	if (i<rows && j<rows) {
+	int x = threadIdx.x + blockIdx.x * blockDim.x;
+	int y = threadIdx.y + blockIdx.y * blockDim.y;
+	//int tid = i + j * blockDim.x * gridDim.x;
+	//int N = rows * columns;
+	if (y < rows && x < columns) {
 		//savingsMatrix[i][j] = (i!=j && j>i) ? costMatrix[0][i] + costMatrix[0][j] -	costMatrix[i][j] : 0;
-		*(savingsMatrix + i*columns + j) = (i != j && j > i) ? *(costMatrix + 0 + i) + *(costMatrix + 0 + j) - *(costMatrix + i*columns + j) : 0;
+		
+		int valOfx = costMatrix[x];
+		int valOfy = costMatrix[y];
+		int valOfxy = costMatrix[x + y * rows];
+		*(savingsMatrix + x + y * rows) = (x != y && x > y) ? valOfx + valOfy - valOfxy : 0;
+		
+		//*(savingsMatrix + i*columns + j) = (i != j && j > i) ? *(costMatrix + 0 + i) + *(costMatrix + 0 + j) - *(costMatrix + i*columns + j) : 0;
+		//*(savingsMatrix + tid ) = (i != j && j > i) ? *(costMatrix + 0 + i) + *(costMatrix + 0 + j) - *(costMatrix + tid) : 0;
 		}
 }
 
 __global__ void
 sortSavings(struct savings_info* records, int count) {
-	int i = threadIdx.x;
+	int i = threadIdx.x + blockIdx.x * blockDim.x;
 	int l;
 	if (count % 2 == 0)
 		l = count / 2;
@@ -107,8 +123,8 @@ sortSavings(struct savings_info* records, int count) {
 __global__ void
 getCostMatrix(struct nodeInfo* localNodeInfo, int *localCostMatrix, int rows, int columns)
 {
-	int x = threadIdx.x;
-	int y = threadIdx.y;
+	int x = threadIdx.x + blockIdx.x * blockDim.x;
+	int y = threadIdx.y + blockIdx.y * blockDim.y;
 
 	if (x < rows & y < columns) {
 		struct nodeInfo tempNode0 = localNodeInfo[x];
@@ -427,9 +443,9 @@ int main(void)
 	}
 
 	// Launch the Vector Add CUDA Kernel
-	dim3 threadsPerBlock(rows, columns);
-	int blocksPerGrid = 1;//((numNodes*numNodes) + threadsPerBlock - 1) / threadsPerBlock;
-	//printf("CUDA kernel launch with %d blocks \n", blocksPerGrid);
+	dim3 threadsPerBlock(MaxThreadx, MaxThready);
+	dim3 blocksPerGrid((((columns + MaxThreadsPerBlock - 1)/MaxThreadsPerBlock) + 1), (((rows + MaxThreadsPerBlock - 1) / MaxThreadsPerBlock) + 1));
+	printf("CUDA kernel launch with %d, %d blocks \n", blocksPerGrid.x, blocksPerGrid.y);
 
 	getCostMatrix <<< blocksPerGrid, threadsPerBlock >>>((struct nodeInfo *)vrpNodeInfo_d, (int *)costMatrix_d, rows, columns);
 	err = cudaGetLastError();
@@ -480,7 +496,7 @@ int main(void)
 	}
 
 	//printf("Copy input data from the host memory to the CUDA device\n");
-	err = cudaMemcpy(costMatrix_d, costMatrix_h, nodeArraySize, cudaMemcpyHostToDevice);
+	err = cudaMemcpy(costMatrix_d, costMatrix_h, size, cudaMemcpyHostToDevice);
 
 	if (err != cudaSuccess)
 	{
@@ -552,12 +568,12 @@ int main(void)
 		exit(EXIT_FAILURE);
 	}
 	// Launch the Vector Add CUDA Kernel
-	dim3 threadsPerBlock_savingsSort(count);
-	blocksPerGrid = 1;//((numNodes*numNodes) + threadsPerBlock - 1) / threadsPerBlock;
+	dim3 threadsPerBlock_savingsSort(MaxThreadsPerBlock);
+	int blocksPerGrid_savingsSort = (count + MaxThreadsPerBlock - 1) / MaxThreadsPerBlock;;//((numNodes*numNodes) + threadsPerBlock - 1) / threadsPerBlock;
 	//printf("RADHIKA : CUDA kernel launch with %d blocks \n", blocksPerGrid);
 
 	//savingsCalc << < blocksPerGrid, threadsPerBlock >> >((int *)costMatrix_d, (int *)savingsMatrix_d, rows, columns);
-	sortSavings <<< blocksPerGrid, threadsPerBlock_savingsSort >>>((savings_info *)records_d, count);
+	sortSavings <<< blocksPerGrid_savingsSort, threadsPerBlock_savingsSort >>>((savings_info *)records_d, count);
 	err = cudaGetLastError();
 
 	if (err != cudaSuccess)
