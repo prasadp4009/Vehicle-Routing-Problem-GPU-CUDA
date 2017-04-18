@@ -1,6 +1,3 @@
-# Vehicle-Routing-Problem
-This repo contains a source code in Python as well C/C++ and CUDA for VRP
-
 To compile the program both python and CUDA you will need following tools and libraries.
 
 1. Python 3 and above with numpy, networkx and matplotlib
