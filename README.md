@@ -23,6 +23,6 @@ Compiling and Executing CUDA Program:
 6. This will generate routes.txt, an output file
 7. To generate graph run the python script "python routesGraphGen.py" in command prompt
 
-Please contact Prasad Pandit (prasad@pdx.edu), Radhika Mandlekar (radhika@pdx.edu) if you have any questions.
+Please contact Prasad Pandit (prasadp4009@gmail.com) if you have any questions.
 
 Thank You..!!!!!!!
